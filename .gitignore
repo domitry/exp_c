@@ -1,0 +1,9 @@
+*~
+*.dat
+*.bin
+*.out
+notebooks/.ipynb_checkpoints
+*.dvi
+*.log
+*.pdf
+*.aux

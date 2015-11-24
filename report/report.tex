@@ -1,0 +1,745 @@
+\documentclass[11pt,a4paper]{jsarticle}
+%
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage[dvipdfmx]{graphicx}
+\usepackage{ascmac}
+\usepackage{url}
+\usepackage{listings,jlisting}
+\lstset{%
+  language={C},
+  basicstyle={\small},%
+  identifierstyle={\small},%
+  commentstyle={\small\itshape},%
+  keywordstyle={\small\bfseries},%
+  ndkeywordstyle={\small},%
+  stringstyle={\small\ttfamily},
+  frame={tb},
+  breaklines=true,
+  columns=[l]{fullflexible},%
+  numbers=left,%
+  xrightmargin=0zw,%
+  xleftmargin=3zw,%
+  numberstyle={\scriptsize},%
+  stepnumber=1,
+  numbersep=1zw,%
+  lineskip=-0.5ex%
+}
+%
+\setlength{\textwidth}{\fullwidth}
+\setlength{\textheight}{40\baselineskip}
+\addtolength{\textheight}{\topskip}
+\setlength{\voffset}{-0.2in}
+\setlength{\topmargin}{0pt}
+\setlength{\headheight}{0pt}
+\setlength{\headsep}{0pt}
+%
+\title{生物学実験B信号処理・画像処理\\レポート課題}
+\author{09C13113 西田 直樹}
+\date{\today}
+\begin{document}
+\maketitle
+%
+%
+\section{実験目的}
+
+生物工学に関わる多くの実験では電圧変化など一次元の信号, またMRI画像の断面などニ次元の信号を扱う.
+これらの信号は理論上は連続である信号も多いが, 実際に計測を行い得られるデータは離散的である.
+
+またこれら離散データには計測時にノイズが乗っている場合や必要なデータが特定の周波数領域に隠れていることがある.
+そこでデータの解析にはフーリエ級数展開・離散フーリエ変換や両者を用いたフィルタ処理など信号処理の知識が必要である.
+
+本実験では信号処理に関わるプログラムを作成することで離散データの処理について習得することを目的とする.
+
+\section{実験装置・環境}
+レポート中のソースコードはUbuntu14.04上のgcc4.9.2を用い以下のコマンドでコンパイルを行った.
+
+\begin{lstlisting}[language=sh]
+  gcc src.c -o dst.out -lm -lGL -lglut
+\end{lstlisting}
+
+OpenGL, glutのバージョンはそれぞれ4.8.6, 2.8.1である.
+
+課題3,4,5で用いた図表はRuby2.1.2p95上でNyaplot v0.1.7を実行し作成した.
+また課題6で用いた図表はPython2.7.9上でmatplotlibを実行し作成した.
+なお, 本レポートで用いたプログラムのソースコード・IPython notebook, TeXファイルは全てGitHub\cite{github}上にアップロードされている.
+
+\section{フーリエ級数展開}
+\subsection{理論}
+
+フーリエ級数展開を用いるとある条件を満たした周期関数を正弦波と余弦波の級数に展開できる.
+条件に関しては本レポートでは扱わないが, 数学Cで紹介された教科書に記載がある.
+本項では以下の定義に従い3つの周期関数をフーリエ級数展開する.
+
+\begin{eqnarray}
+  \label{eq:fourier}
+  f(t) &=& \frac{1}{2}a_0 + \sum_{n=1}^{\infty} a_n \cos{\frac{2\pi n}{T}t} + b_n \sin{\frac{2\pi n}{T}}\\
+  a_n &=& \frac{2}{T}\int_{-\frac{T}{2}}^{\frac{T}{2}} f(t)\cos{\frac{2\pi n}{T}t} \nonumber \\
+  b_n &=& \frac{2}{T}\int_{-\frac{T}{2}}^{\frac{T}{2}} f(t)\sin{\frac{2\pi n}{T}t} \nonumber
+\end{eqnarray}
+
+まずインパルス信号を周期$2\pi$に拡張した信号$\delta(t)$を以下のように定義する.
+
+\begin{equation}
+  \delta(t) =
+  \left\{
+    \begin{aligned}
+      & 0 & (x=2n\pi, n \in \mathcal{N})  \\
+      & \infty & (otherwise)
+    \end{aligned}
+    \right.
+\end{equation}
+
+上記の信号をフーリエ級数展開すると以下の級数が得られる.
+
+\begin{eqnarray}
+  f(t) &=& \frac{1}{2}a_0 + \sum_{n=1}^{\infty} a_n \cos{\frac{2\pi n}{T}t} + b_n \sin{\frac{2\pi n}{T}} \label{eq:completion} \\
+  a_n &=& 1 \nonumber \\
+  b_n &=& 0 \nonumber
+\end{eqnarray}
+
+次に教科書中の課題3-8に従い与えられた以下の信号$f(t)$を考える.
+
+\begin{equation}
+  f(t) =
+  \left\{
+  \begin{aligned}
+    & 0 & (-2\pi \le t < 0)\\
+    & x - \pi & (0 \le t < \pi)\\
+    & -x + 2\pi & (\pi \le t < 2\pi)
+  \end{aligned}
+  \right.
+  \label{eq:sankaku}
+\end{equation}
+
+上記の信号を周期$2\pi$に拡張した信号を再び$f$として定義しフーリエ級数展開すると以下の級数が得られる.
+
+\begin{eqnarray}
+  \label{eq:sankaku_fourier}
+  f(t) &=& \frac{1}{2}a_0 + \sum_{n=1}^{\infty} a_n \cos{\frac{2\pi n}{T}t} + b_n \sin{\frac{2\pi n}{T}}\\
+  a_n &=&
+  \left\{
+  \begin{aligned}
+    & 0 & (n \bmod 2=0) \\
+    & \frac{1}{\pi n} & (k \bmod 2=1) \\
+    & frac{-1}{\pi n} & (otherwise)
+  \end{aligned}
+  \right.\nonumber\\
+  b_n &=&
+  \left\{
+  \begin{aligned}
+    & 0 & (n \bmod 2=0) \\
+    & \frac{1}{\pi n} & (k \bmod 2=1) \\
+    & frac{-1}{\pi n} & (otherwise)
+  \end{aligned}
+  \right.\nonumber
+\end{eqnarray}
+
+\subsection{手順}
+
+まずデータを作成してプロットする流れの確認として正弦波の信号を$[0,2\pi]$の範囲で生成しテキストファイルとして保存するプログラムを作成した.
+
+\lstinputlisting[caption=課題3-5 正弦波の表示,label=ex34]{../ex34.c}
+
+次に正弦波に$[\frac{-\pi}{3},\frac{\pi}{3}]$の範囲の一応分布に従うノイズを載せた信号を生成し保存するプログラムを作成した.
+
+\lstinputlisting[caption=課題3-6 雑音が重畳した正弦波の表示,label=ex36]{../ex36.c}
+
+次に式に従いインパルス信号のフーリエ級数展開結果の信号を生成し保存するプログラムを作成した.
+
+\lstinputlisting[caption=課題3-7 インパルス信号の近似表現,label=ex37]{../ex37.c}
+
+最後に式に従い与えられた信号のフーリエ級数展開結果を生成し保存するプログラムを作成した.
+
+\lstinputlisting[caption=課題3-8 フーリエ級数展開による関数表現,label=ex38]{../ex38.c}
+
+\subsection{結果}
+
+それぞれのプログラムの実行結果は以下のようになった.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/34sin.png}
+    \caption{プロットしたsin波}
+    \label{fig:sin}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/36sin_with_noise.png}
+    \caption{sin波にノイズを乗せた信号}
+    \label{fig:sin_with_noise}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/37impulse10.png}
+    \caption{インパルス信号をフーリエ級数展開した結果の信号}
+    \label{fig:impulse}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/51series_given.png}
+    \caption{与えられた信号}
+    \label{fig:given}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/38series10.png}
+    \caption{与えられた信号をフーリエ級数展開した結果の信号}
+    \label{fig:fourier_given}
+  \end{center}
+\end{figure}
+
+\clearpage
+\subsection{考察}
+
+図\ref{fig:sin}, \ref{fig:sin_with_noise}に関しては理論通りの結果が得られたことが目視で確認できる.
+
+それに対し図\ref{fig:impulse}で表されたインパルス信号のフーリエ級数展開では直感と反する結果が得られた.
+すなわち10つの項を足し合わせた段階では突出部が10個現れたように見える.
+
+これはプログラムの間違いではない. 実際に$5*10^6$個の項を足し合わせた結果は下図のように予想した関数の形に近い.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/37impulse500000.png}
+    \caption{インパルス信号をフーリエ級数展開した結果の信号($5*10^6$個の項を使用)}
+    \label{fig:impulse2}
+  \end{center}
+\end{figure}
+
+%TODO: インパルス信号の山が統合されていく理由
+
+また, 図\ref{fig:given}, \ref{fig:fourier_given}では理論の項で導出した式と概ね一致することがわかる.
+これを定量的に評価するため元の関数とフーリエ級数展開した関数の誤差を出力するプログラムを作成しプロットした.
+作成したプログラムを以下に示す.
+このプログラムでは$[0, 2\pi]$の範囲で等間隔に512個のサンプル点を配置し, 各点における両関数の値の差を縦軸にプロットする.
+
+\lstinputlisting[caption=誤差を確認するためのプログラム,label=ex39]{../ex39.c}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/39error.png}
+    \caption{元の関数とフーリエ級数展開した関数の差 (横軸は用いた項の数)}
+    \label{fig:error}
+  \end{center}
+\end{figure}
+
+このプログラムで得られた結果が図\ref{fig:error}である.
+図\ref{fig:error}から使用する項の数を増やしていくにつれ,誤差は0に漸近することが予想される.
+(プログラムで出力した範囲ではそのように見える.)
+この予想を式\ref{eq:fourier}より確かめる.
+
+%TODO: 誤差が0に収束する理由
+
+以上より理論通りの結果が得られたとわかる.
+
+
+\clearpage
+
+%
+\section{フーリエ変換}
+\subsection{理論}
+
+フーリエ級数展開の適応範囲を周期関数から任意の実数関数に拡張した手法をフーリエ変換と呼ぶ.
+連続領域でのフーリエ変換・逆フーリエ変換はそれぞれ以下のように表される.
+
+\begin{eqnarray}
+  F(\omega) &=& \int_{-\infty}^{\infty} f(t)exp(-j\omega t)dt\\
+  f(t) &=& \frac{1}{2\pi} \int_{-\infty}^{\infty} F(\omega)exp(j\omega t)d\omega
+\end{eqnarray}
+
+上式を離散データに適応できるようにした変換を離散フーリエ変換(DFT)と呼ぶ.
+離散フーリエ変換とその逆変換はそれぞれ以下のように表される.
+
+\begin{eqnarray}
+  \label{eq:dft}
+  F[k] &=& \sum_{n=0}^{N-1} f[n]exp(-j2\pi\frac{k}{N}n) \\
+  \label{eq:idft}
+  f[n] &=& \frac{1}{N} \sum_{k=0}^{N-1} F[k]exp(-j2\pi\frac{k}{N}n)
+\end{eqnarray}
+
+\subsection{手順}
+
+フーリエ変換をC言語で実装し, 以下の手順でそれを確認するプログラムを作成した.
+まず式\ref{eq:sankaku}で表される信号をサンプリング周期6e-3[s]で離散化したデータを用意する.
+このデータに式\ref{eq:dft}で表されるDFTを適応し,式\ref{eq:idft}で表される逆変換iDFTを適応することで元のデータを復旧させる.
+作成したプログラムを以下に示す.
+
+\lstinputlisting[caption=課題4-x 正弦波・周期関数のフーリエ変換 逆フーリエ変換による信号復元,label=ex41]{../ex41.c}
+\subsection{結果}
+
+元の信号, 元の信号をDFTした結果, それをさらにiDFTした結果をプロットしたものをそれぞれ以下に示す.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/42given_sin.png}
+    \caption{元の信号 (sin)}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/42rev_dfted_sin.png}
+    \caption{DFTで変換したデータを逆変換した信号 (sin)}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/42real_part_sin.png}
+    \caption{DFTで変換後の実数成分 (sin)}
+    \label{fig:real_sin}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/42imaginary_part_sin.png}
+    \caption{DFTで変換後の虚数成分 (sin)}
+    \label{fig:im_sin}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/42given.png}
+    \caption{元の信号}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/42rev_dfted.png}
+    \caption{DFTで変換したデータを逆変換した信号}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/42real_part.png}
+    \caption{DFTで変換後の実数成分}
+    \label{fig:real_given}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/42imaginary_part.png}
+    \caption{DFTで変換後の虚数成分}
+    \label{fig:im_given}
+  \end{center}
+\end{figure}
+
+\clearpage
+
+\subsection{考察}
+
+sin, 式\ref{eq:sankaku}で定義される関数共に目視で確認する限りにおいてはDFTした後iDFTすることで元の信号が復元できているように見える.
+これを定量的に評価するため, 後者の信号に関して元の信号とDFT,iDFTで生成された信号の差をプロットした.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/42error.png}
+    \caption{DFT後iDFTした関数と元の関数の差}
+    \label{fig:42error}
+  \end{center}
+\end{figure}
+
+図\ref{fig:42error}を見ると元の信号が$[0, \frac{\pi}{2}]$の範囲に収まるのに対してその誤差は$10^-6$ほどである. この誤差は計算機誤差によるものと考えられる.
+
+% 時間があればここで計算機誤差の種類（丸め?）か検討する
+% 時間があれば誤差が両端に集中している理由を考察する
+
+また両信号をDFTした結果の実部・虚部を比較する.
+フーリエ級数展開からフーリエ変換の導出仮定\cite{fourier}を参照すると, 結果の実部は信号に含まれるcosの成分虚部はsinの成分を表すこと,また図の中心は高周波数成分,端は低周波成分を表すことがわかる.
+
+% 時間があればここで実部がcos成分, 虚部がsin成分を表すことを証明する
+
+ここでsin波にDFTを適応した結果の実部,虚部をそれぞれ表す図\ref{fig:real_sin},図\ref{fig:im_sin}を見ると実部の端に負の値が現れており, 理論に反するように思われる.
+しかし値がより大きな虚部と比較するとそのオーダーは$10^8$ほど異なることがわかる.
+これよりsin波のDFT結果の実部に現れた値は計算機誤差の類ではないかと推察される.
+
+また式\ref{eq:sankaku}の信号をDFTした結果\ref{fig:real_given}, \ref{fig:im_given}を検討するとこの信号が多数のsin, cos成分から成ること, また両成分が共に低周波域に集中していることがわかる.
+これは同信号を周期$2\pi$に拡張した信号をフーリエ級数展開した結果\ref{eq:sankaku_fourier}から推測される通りである.
+
+以上より本項では概ね理論通りの結果が得られたと考えられる.
+
+\clearpage
+
+\section{信号処理}
+\subsection{理論}
+\begin{equation}
+  g[n] = \sum_{i} h[i]f[n-i]
+  \label{eq:defh}
+\end{equation}
+
+さて, ここで以下のような関数を考える. この関数はある点の周りの5点を平均化する演算と言える.
+この関数を全サンプリング点に対して適応すると信号全体を滑らかにする効果が期待できる.
+
+\begin{equation}
+  g[n] = \frac{f[n-2]+f[n-1]+f[n]+f[n-1]+f[n+2]}{5}
+\end{equation}
+
+上式を\ref{eq:defh}式に当てはめ, $h[n]$を導出すると以下のような結果が得られる.
+
+\begin{equation}
+  h[n] =
+  \left\{
+    \begin{aligned}
+      & 1 & (-2 \leq n \leq 2)  \\
+      & 0 & (otherwise)
+    \end{aligned}
+    \right.
+\end{equation}
+
+上で定義される$h[n]$を平均化フィルタと呼ぶ.
+
+\subsection{手順}
+上記の理論を確かめるため, 以下のような3つのプログラムを作成した.
+
+\lstinputlisting[caption=課題5-1 時間領域での信号の平滑化,label=ex51]{../ex51.c}
+\lstinputlisting[caption=課題5-2 空間領域での信号の平滑化,label=ex52]{../ex52.c}
+\lstinputlisting[caption=課題5-3 周波数成分に基づいたフィルタ設計,label=ex53]{../ex53.c}
+
+\subsection{結果}
+それぞれのプログラムを実行した結果をいかに示す.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/51series_given.png}
+    \caption{与えられた信号}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/51series_given_noise.png}
+    \caption{与えられた信号にノイズを乗せたもの}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/51averaged9.png}
+    \caption{周りの9個のデータ点を平均化した信号}
+    \label{fig:ave9}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/51averaged21.png}
+    \caption{周りの21個のデータ点を平均化した信号}
+    \label{fig:ave21}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/51averaged41.png}
+    \caption{周りの41個のデータ点を平均化した信号}
+    \label{fig:ave41}
+  \end{center}
+\end{figure}
+
+% 5-2
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/52result_dft.png}
+    \caption{DFT後iDFTした信号}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/52result_folding.png}
+    \caption{平均化フィルタを適応した後の信号}
+  \end{center}
+\end{figure}
+
+% 5-3
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/53low_pass10.png}
+    \caption{ローパスフィルタ適応後の信号(閾値10)}
+    \label{fig:low10}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/53high_pass10.png}
+    \caption{ハイパスフィルタ適応後の信号(閾値10)}
+    \label{fig:high10}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/53low_pass50.png}
+    \caption{ローパスフィルタ適応後の信号(閾値50)}
+    \label{fig:low50}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/53high_pass50.png}
+    \caption{ハイパスフィルタ適応後の信号(閾値50)}
+    \label{fig:high50}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/53low_pass3.png}
+    \caption{ローフィルタ適応後の信号(閾値3)}
+    \label{fig:low3}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=10cm]{images/53high_pass3.png}
+    \caption{ハイパスフィルタ適応後の信号(閾値3)}
+    \label{fig:high3}
+  \end{center}
+\end{figure}
+
+\clearpage
+
+\subsection{考察}
+
+まず平均化フィルタについて考察する.
+大まかな傾向として, 図\ref{fig:ave9}のようにより少ない点を平均するとノイズを多く含む結果が得られるのに対し, 図\ref{fig:ave41}のように多くの点を平均するとまた真の関数とは異なる, 曲線的な結果が得られることがわかる.
+ノイズを除去する場合はこの両者の中間である図\ref{fig:ave21}のような結果を選択するべきであろう.
+
+この平均化フィルタをノイズが乗ったデータから真の関数を推定する統計的手法と考えるとn-neigbors法という名が付いている.
+また図\ref{fig:ave9}のように誤差を大きくとらえてしまう場合, また図\ref{fig:ave41}のように真の関数の十分な特徴を捉えられない場合をそれぞれunder-fitting, over-fittingと呼ぶ.\cite{statistics}
+
+次に理論で述べたとおり, 上記n-neigbors法をデジタルフィルタ$h[x]$としてとらえ処理した場合を検討する.
+結果の信号を見るとn-neigbors法の実装とデジタルフィルタの実装で得られた結果は同様にノイズを除去し, 信号を滑らかにしているように見えるが細部がやや異なる.
+これはn-neigborsの実装では必要な点がサンプリング点に含まれない場合(両端を超えた場合)は端の値を利用したのに対し, デジタルフィルタでは周期信号としてもう片方の端から値を取っており, 端点処理の違いから生まれる差であるとわかる.
+
+次に周波数領域を使ったハイパス・ローパスフィルタについて検討する.
+まずローパスフィルタの結果を見ると, 周波数領域でより多くの高周波領域を含めた図\ref{fig:low50}の方がより少なかった図\ref{fig:low10}と比べノイズを多く含んでおり, このフィルタがうまく機能していることがわかる.
+
+ハイパスフィルタについて検討すると, 図\ref{fig:high50}と図\ref{fig:high10}に着目できる. 同じ閾値を採用したローパスフィルタの結果では両者の差が肉眼でも十分確認できたが、ハイパスフィルタではそれがほとんど不可能であることがわかる.
+
+一方閾値3を採用した場合の結果, 図\ref{fig:high3}を見るとその他2者との違いが明らかである. 全体的な傾向の他, ノイズが[0, 1/3]の一様分布に従うはずが0.35を超える値がフィルタされているため, 真の関数の一部が入ってしまっていることがわかる. この結果より閾値の選択に関して以下の考察が得られる.
+
+まず今回のように真の関数の形がわかっている場合はフィルタを通した後の信号と真の関数の差を最小化するような定数を選べば良いことがわかる.
+
+逆に真の関数の形がわからず, ノイズがある分布に従うことがわかる場合も存在する. 例えば2年次の物理学実験では陽子の軌跡が正規分布に従うことを学んだ.
+今回であればノイズは一様分布であるが, ハイパスフィルタを通した後の値の頻度を解析することでうまくノイズが分離できるような定数を選択することができるだろうと予想できる.
+
+\clearpage
+
+\section{画像処理}
+\subsection{理論}
+式\ref{eq:dft}, \ref{eq:idft}で定義した離散フーリエ変換を二次元に拡張すると,以下の式が得られる.
+
+\begin{eqnarray}
+  \label{eq:dft2}
+  F(u, v) &=& \sum_{y=0}^{N-1}( \sum_{x=0}^{N-1} f(x,y)e^{-2\pi j\frac{ux}{M}})e^{-2\pi j\frac{vy}{N}}\\
+  \label{eq:idft2}
+  f(x, y) &=& \frac{1}{\pi} \sum_{u=0}^{N-1}( \sum_{v=0}^{N-1} F(u,v)e^{-2\pi j\frac{ux}{M}})e^{-2\pi j\frac{vy}{N}}
+\end{eqnarray}
+
+この式を愚直に実装するとその計算量はデータ点nとして$O(n^4)$で表される.
+ただし上式を変形するとその計算量を$O(n^3)$に減らすことができる.
+
+
+\subsection{手順}
+
+まず, OpenGL/GLUTの動作を確認するためサンプル画像を読み込んで表示するプログラムを作成した.
+
+\lstinputlisting[caption=課題6-1 画像の読み込み・表示,label=ex51]{../ex61.c}
+
+次に画像の二値化を行うプログラムを作成した.
+このプログラムでは各ピクセルを走査し, その値がある閾値を越せば白(255), 満たなければ黒(0)を出力することで二値化を行う.
+ここで用いる閾値に関しては, 別途作成したサンプル画像のヒストグラムの値を目視で読み取りうまく二値化できるような値を選択した.
+
+\lstinputlisting[caption=課題6-2 画像の二値化,label=ex62]{../ex62.c}
+
+次に局所平均化フィルタを作成し実装した.
+このプログラムでは各画素を走査し, その点自身と近傍点の平均を新たな値として採用する.
+
+\lstinputlisting[caption=課題6-3 画像の局所的平均化演算,label=ex63]{../ex63.c}
+
+次に課題6-2で制作した画像の二値化プログラムを流用し, エッジ検出を行うプログラムを作成した.
+このプログラムでは各ピクセルを走査し, あるピクセルの4近傍にそのピクセルの値と異なる値を持つピクセルが存在する場合, そのピクセルをエッジとみなす.
+
+\lstinputlisting[caption=課題6-4 画像のエッジ検出,label=ex64]{../ex64.c}
+
+最後に二次元DFT, iDFTを実装しサンプル画像に量変換を適応することで元の画像が復元できたか確かめるプログラムを作成した.
+またこの際実装したDFTを用いて簡単なローパスフィルタ・ハイパスフィルタを設計・実装した.
+
+\lstinputlisting[caption=課題6-5 画像のフーリエ変換,label=ex65]{../ex66.c}
+
+\subsection{結果}
+
+それぞれのプログラムの出力結果を以下に示す.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/61sample.png}
+    \caption{サンプル画像}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/62binarized.png}
+    \caption{二値化画像}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/63averaged.png}
+    \caption{平均化画像}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/64diffed.png}
+    \caption{境界線抽出画像}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/66idfted.png}
+    \caption{位相空間を表す画像}
+    \label{fig:isou}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/66high_filter.png}
+    \caption{周波数領域で設計したフィルタ(閾値25)}
+    \label{fig:filtersq25}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/66low_filter_sq25.png}
+    \caption{ローパスフィルタの結果(閾値25)}
+    \label{fig:lowsq25}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/66high_filter_sq25.png}
+    \caption{ハイパスフィルタの結果(閾値25)}
+    \label{fig:highsq25}
+  \end{center}
+\end{figure}
+
+\clearpage
+
+\subsection{考察}
+
+境界線の抽出に関して今回は各点を二重のforで走査したが, 等価なデジタルフィルタで置き換えることができる.
+例えば以下のようなフィルタを考える.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=2cm]{images/table.png}
+    \caption{境界線抽出フィルタ}
+    \label{fig:filter}
+  \end{center}
+\end{figure}
+
+このフィルタをかけた後, 0以外の値を取る画素を全て255に固定することで作成したプログラムと同様の結果が得られる.
+
+また, 今回設定した閾値は多数の値を試した上,　肺を囲む境界線がうまくつながる値を選択した.
+今回の画像は一枚だけであったが、これを例えば大学の健康診断で撮影された全学生・教員分の胸部レントゲン写真を処理することを考えると閾値を手で選択するのは効率が悪い.
+
+そこで閾値の選択を自動化することを考えると'境界線がうまくつながる'という条件をより具体的にする必要があることがわかる. これを元にアルゴリズムを具体化すると以下の2つの手法が考えられる.
+
+まず胸部レントゲン写真では肺の領域の画素数にそれほどの分散があるとは考えられないため, ある一定面積以上の領域のみを考え, その条件を満たす領域が体と両肺, 背景の4つのみになる閾値を選択する方法が考えられる.
+(より詳細には背景が手と胸で分割されるなど考慮する必要がある.) あるいは理想の領域の数と現在の領域の数の差, また各領域の面積をそれぞれ数式にしたペナルティ関数を最小化する離散最適化問題を解く方法も考えられる.
+
+両方とも他の課題の画像に応用できるような汎用的な手法ではないが, 今回の胸部レントゲン写真のように被写体が限定された状況では有用なアルゴリズムではないかと考えられる.
+
+次に周波数領域で設計したローパス・ハイパスフィルタについて検討する.
+ローパスフィルタの結果, 図\ref{fig:lowsq25}と元画像を並べて比較すると色の境界がややぼやけていることがわかる.またハイパスフィルタ図\ref{fig:highsq25}に関しても境界のみが抽出されていることがわかる.
+
+今回は四角のフィルタを設計したが, 位相図\ref{fig:isou}を見てもわかるように高周波領域は四隅から放射状に分布している. これより円状のフィルタの方が境界線抽出に適している可能性を検討するため, 別に図\ref{fig:filterc}のようなフィルタを設計した.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/66filter_circle50.png}
+    \caption{円状のフィルタ(閾値128)}
+    \label{fig:filterc}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/66low_circle128.png}
+    \caption{ローパスフィルタの結果(閾値25)}
+    \label{fig:lowc}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/66high_circle128.png}
+    \caption{ハイパスフィルタの結果(閾値25)}
+    \label{fig:highc}
+  \end{center}
+\end{figure}
+
+円状のハイパスフィルタの結果\ref{fig:highc}と四角形の結果\ref{fig:highsq25}を比較すると, 前者では縦横の境界線がうまく抽出できている。逆に後者ではそれがうまく抽出できていない.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/hoshi.png}
+    \caption{星形のフィルタ}
+    \label{fig:hoshi}
+  \end{center}
+\end{figure}
+
+次に星形のフィルタ図\ref{fig:hoshi}を検討するつもりであったが, 時間の都合より断念する.
+
+次に図\ref{fig:isou}の位相図について検討する. 上で検討した通りローパスフィルタ・ハイパスフィルタがそれぞれ機能していると考えられるため可視化の結果は正しいものと考えられるが, 今回得られた画像は画像処理の教科書などで目にする自然画像にフーリエ変換を適応したものとはやや異なる. 前者は白色領域が四隅に偏っているが, 後者では中心に固まっていることがわかる.
+
+これはフーリエ変換で得られる位相図は両軸方向に周期的であり, 切り出す領域が違うことが原因として考えられる. すなわち実際の位相図は図\ref{fig:isou}をタイルのように並べたようになるであろう.
+実際画像を中心で四分割し再構成すると図\ref{fig:isou2}が得られ, 高周波領域がよりわかりやすい位相図が得られることがわかる.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[width=5cm]{images/66idfted2.png}
+    \caption{位相空間を表す画像}
+    \label{fig:isou2}
+  \end{center}
+\end{figure}
+
+
+\clearpage
+
+\begin{thebibliography}{10}
+\bibitem{text} 生物工学実験B テキスト
+\bibitem{github} \url{http://www.github.com/domitry/exp_c}
+\bibitem{fourier} フーリエ解析と偏微分方程式・E.クライツィグ
+\bibitem{statistics} The Elements of Statistical Learning. Trevor Hastie, Robert Tibshirani, Jerome Friedman
+\end{thebibliography}
+
+\end{document}
