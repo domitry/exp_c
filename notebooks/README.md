@@ -9,7 +9,7 @@ IPython notebook & IRuby notebookの集合.
 - [Exp6](https://github.com/domitry/exp_c/blob/master/notebooks/Exp6.ipynb)
 - [Exp6.2](https://github.com/domitry/exp_c/blob/master/notebooks/Exp6-2.ipynb)
 
-## Required version
+## Required software
 - Jupyter v4.0.6 or up
 - IPython i4.0.0 or up
 - IRuby v0.2.7 or up
