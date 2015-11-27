@@ -1,5 +1,5 @@
 # EXP_C
-ÂçºåÂç³Ø´ğÁÃ¹©³ØÉô¥·¥¹¥Æ¥à²Ê³Ø²ÊÀ¸Êª¹©³Ø¥³¡¼¥¹3Ç¯¼¡¸å´ü¼Â¸³¤Î¥×¥í¥°¥é¥à
+å¤§é˜ªå¤§å­¦åŸºç¤å·¥å­¦éƒ¨ ã‚·ã‚¹ãƒ†ãƒ ç§‘å­¦ç§‘ ç”Ÿç‰©å·¥å­¦ã‚³ãƒ¼ã‚¹3å¹´æ¬¡å¾ŒæœŸ ç”Ÿç‰©å·¥å­¦å®Ÿé¨“B ã€Œä¿¡å·ãƒ»ç”»åƒå‡¦ç†ã€ã«é–¢ã™ã‚‹ã‚‚ã‚ã‚‚ã‚
 
 ## How to build
 ```shell:
@@ -9,5 +9,5 @@ cd exp_c
 ```
 
 ## License
-¥×¥í¥°¥é¥à: MIT License
-²èÁü¡¦Ê¸¾Ï: CC-BY
+- *.c & *.ipynb: [MIT License](https://github.com/domitry/exp_c/blob/master/LICENSE)
+- ãã®ä»–: [CC-BY 2.0](https://creativecommons.org/licenses/by/2.0/deed.ja)
