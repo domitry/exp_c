@@ -1,5 +1,6 @@
 # EXP_C
 大阪大学基礎工学部 システム科学科 生物工学コース3年次後期 生物工学実験B 「信号・画像処理」に関するもろもろ
+![](https://dl.dropboxusercontent.com/u/47978121/66idfted2.png)
 
 ## How to build
 ```shell:
